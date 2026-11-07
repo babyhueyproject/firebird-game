@@ -59,34 +59,59 @@ function drawTrunk(x,y,w,h,edge,flameDir){
   for(let k=0;k<5;k++){let xx=x+25+k*24, yy=y+Math.min(h-2,30+(k*41)%(Math.max(35,h)));ctx.fillRect(xx,yy,4,Math.min(34,Math.max(0,y+h-yy)))}
 }
 function drawFlameLine(x,edge,w,dir,scale=1){
-  // Fire licks outward from the trunk edge; polygon silhouettes flicker like pixel-art flames.
-  ctx.save();ctx.globalCompositeOperation='lighter';
-  const base=edge;
-  ctx.fillStyle='#ff4a0b';ctx.fillRect(x+3,base- (dir===-1?0:0),w-6,dir===-1?7:7);
-  for(let i=0;i<15;i++){
-    const fx=x+5+i*9.4;
-    const wave=Math.sin(frame*.19+i*1.73),wave2=Math.sin(frame*.11+i*2.31);
-    const height=(25+((i*17)%27)+wave*10+wave2*5)*scale;
-    const tip=base+dir*height;
-    const sway=Math.sin(frame*.14+i)*5;
-    ctx.fillStyle=i%4===0?'#ff3d0a':i%3===0?'#ff7b0c':'#ffae16';
-    ctx.beginPath();
-    ctx.moveTo(fx-7,base);ctx.lineTo(fx-7,base+dir*height*.35);
-    ctx.lineTo(fx-2+sway,base+dir*height*.68);
-    ctx.lineTo(fx+1+sway,tip);
-    ctx.lineTo(fx+7+sway,base+dir*height*.58);
-    ctx.lineTo(fx+10,base+dir*height*.28);ctx.lineTo(fx+10,base);ctx.closePath();ctx.fill();
-    // bright yellow inner tongue
-    ctx.fillStyle=i%3===0?'#fff04a':'#ffd52b';
-    const ih=height*.48;
-    ctx.fillRect(fx-2,base+dir*ih,6,ih);
-    ctx.fillRect(fx-5,base+dir*(ih*.48),10,Math.max(4,ih*.16));
+  // Chunky 8-bit fire: every flame is built from hard-edged square pixels.
+  ctx.save();
+  const cell=6;
+  const base=Math.round(edge/cell)*cell;
+  ctx.fillStyle='#8f211f';
+  ctx.fillRect(x+3,base,w-6,cell*2);
+  ctx.fillStyle='#f04413';
+  ctx.fillRect(x+6,base+(dir===1?-cell:0),w-12,cell);
+  // Separate tongues with stepped silhouettes and quantized frame changes.
+  const count=Math.floor((w-12)/(cell*5));
+  for(let i=0;i<count;i++){
+    const phase=Math.floor(frame/5);
+    const pulse=((i*7+phase*3)%7);
+    const heightCells=5+((i*5+phase*2)%5)+Math.floor(pulse/2);
+    const height=Math.round(heightCells*scale);
+    const tongueX=x+8+i*cell*5;
+    for(let row=0;row<height;row++){
+      const t=row/Math.max(1,height-1);
+      // Wider at the base, narrowing in stair steps toward the tip.
+      const half=Math.max(0,Math.ceil((1-t)*2.5));
+      const widthCells=half*2+1;
+      const offset=(5-widthCells)*cell/2;
+      const yy=base+dir*(row*cell+cell);
+      // Outer ember-red pixel edge.
+      ctx.fillStyle='#d92d16';
+      ctx.fillRect(tongueX+offset-cell,yy,widthCells*cell+cell*2,cell);
+      // Main orange body.
+      ctx.fillStyle='#ff6417';
+      ctx.fillRect(tongueX+offset,yy,widthCells*cell,cell);
+      // Golden inner pixels, stopping before the flame tip.
+      if(row<height*.68){
+        ctx.fillStyle='#ffad20';
+        const innerW=Math.max(cell,widthCells*cell-cell*2);
+        ctx.fillRect(tongueX+offset+cell,yy,innerW,cell);
+      }
+      if(row<height*.32){
+        ctx.fillStyle='#ffe34b';
+        ctx.fillRect(tongueX+offset+cell*2,yy,Math.max(cell,widthCells*cell-cell*4),cell);
+      }
+    }
+    // Small pixel sparks at selected tips.
+    if((i+phase)%3===0){
+      ctx.fillStyle='#ffd947';
+      ctx.fillRect(tongueX+cell,base+dir*(height*cell+cell*2),cell,cell);
+    }
   }
-  // molten hot line along the rim
-  ctx.fillStyle='#ffd93c';ctx.fillRect(x+9,base+(dir===1?-1:0),w-18,5);
-  ctx.fillStyle='#fff36a';ctx.fillRect(x+25,base+(dir===1?1:2),w-52,2);
+  // Hot pixel strip along the burning rim.
+  ctx.fillStyle='#ffdc38';
+  ctx.fillRect(x+12,base+(dir===1?-cell:0),w-24,cell);
+  ctx.fillStyle='#fff17a';
+  ctx.fillRect(x+30,base+(dir===1?-cell:0),w-60,Math.max(2,cell/2));
   ctx.restore();
-  if(Math.random()<.8)spawnEmber(x+w/2,base,dir);
+  if(Math.random()<.65)spawnEmber(x+w/2,base,dir);
 }
 function drawLogs(){
   for(const p of logs){
